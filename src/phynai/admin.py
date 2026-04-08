@@ -90,7 +90,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
             return yaml.safe_load(f) or {}
     except ImportError:
         # Minimal fallback — enough for our structured manifest
-        _err("PyYAML not installed. Run: uv pip install pyyaml")
+        _err("PyYAML not installed. Run: pip install pyyaml")
         sys.exit(1)
 
 
@@ -101,7 +101,7 @@ def _dump_yaml(data: dict[str, Any], path: Path) -> None:
         with open(path, "w") as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
     except ImportError:
-        _err("PyYAML not installed. Run: uv pip install pyyaml")
+        _err("PyYAML not installed. Run: pip install pyyaml")
         sys.exit(1)
 
 

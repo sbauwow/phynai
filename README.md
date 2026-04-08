@@ -30,7 +30,7 @@ cd phynai-agent
 ./setup.sh
 ```
 
-The setup script installs Python 3.11 (via [uv](https://docs.astral.sh/uv/)), creates a virtualenv, installs core dependencies, and puts `phynai` on your PATH. Takes about 30 seconds.
+The setup script finds Python 3.11+, creates a virtualenv, installs core dependencies via pip, and puts `phynai` on your PATH. Takes about 30 seconds.
 
 ### Windows (WSL)
 
@@ -159,7 +159,6 @@ Connect PhynAI to Slack so your team can interact with the agent via DM or @-men
 
 ```bash
 pip install 'phynai-agent[slack]'
-# or: uv pip install slack-bolt
 ```
 
 **Configure:**
@@ -364,6 +363,7 @@ Use `/cost` in the REPL for cumulative session totals. Pricing is computed from 
 ## Development
 
 ```bash
+./setup.sh            # first-time setup
 make dev              # install with dev dependencies
 make test             # run the test suite
 make lint             # ruff check

@@ -2,33 +2,35 @@
 
 .PHONY: install dev test test-verbose lint format typecheck clean build docker docker-run run chat serve help
 
+VENV := .venv/bin
+
 install: ## Install production dependencies
-	uv sync
+	$(VENV)/pip install -e .
 
 dev: ## Install all dependencies including dev tools
-	uv sync --group dev
+	$(VENV)/pip install -e . && $(VENV)/pip install pytest pytest-asyncio ruff
 
 test: ## Run tests (quiet output)
-	uv run pytest tests/ -q
+	$(VENV)/pytest tests/ -q
 
 test-verbose: ## Run tests (verbose output)
-	uv run pytest tests/ -v
+	$(VENV)/pytest tests/ -v
 
 lint: ## Check code style with ruff
-	uv run ruff check src/ tests/
+	$(VENV)/ruff check src/ tests/
 
 format: ## Auto-format code with ruff
-	uv run ruff format src/ tests/
+	$(VENV)/ruff format src/ tests/
 
 typecheck: ## Run type checking with pyright
-	uv run pyright src/
+	$(VENV)/pyright src/
 
 clean: ## Remove build artifacts and caches
 	rm -rf .venv __pycache__ .pytest_cache .ruff_cache dist
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 build: ## Build distribution packages
-	uv build
+	$(VENV)/pip install build && $(VENV)/python -m build
 
 docker: ## Build Docker image
 	docker build -t phynai-agent .
@@ -37,13 +39,13 @@ docker-run: ## Run Docker container with .env file
 	docker run --env-file .env -p 8080:8080 phynai-agent
 
 run: ## Run a single prompt: make run PROMPT="your prompt"
-	uv run phynai run "$(PROMPT)"
+	$(VENV)/phynai run "$(PROMPT)"
 
 chat: ## Start interactive chat session
-	uv run phynai chat
+	$(VENV)/phynai chat
 
 serve: ## Start the HTTP server
-	uv run phynai serve
+	$(VENV)/phynai serve
 
 help: ## Show this help message
 	@echo "phynai-agent — developer targets"

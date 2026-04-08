@@ -704,7 +704,7 @@ def setup_tools(env: dict[str, str]) -> dict[str, str]:
         import httpx
         _ok(f"httpx {httpx.__version__} (HTTP client)")
     except ImportError:
-        _err("httpx not found — run: uv sync")
+        _err("httpx not found — run: pip install httpx")
 
     return env
 

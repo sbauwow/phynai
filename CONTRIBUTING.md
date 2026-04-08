@@ -5,15 +5,11 @@
 ```bash
 git clone https://github.com/sbauwow/phynai-agent.git
 cd phynai-agent
-make dev        # install all dependencies (requires uv)
+./setup.sh      # creates venv and installs dependencies
 make test       # run the test suite
 ```
 
-You need [uv](https://docs.astral.sh/uv/) installed. If you don't have it:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+You need Python 3.11+ installed.
 
 ## Project Structure
 
@@ -114,7 +110,7 @@ skills you trust.
 
 | Target | Description |
 |---|---|
-| `make dev` | Install all dependencies with uv |
+| `make dev` | Install all dependencies |
 | `make test` | Run test suite (quiet) |
 | `make test-verbose` | Run test suite with full output |
 | `make lint` | Check code style with ruff |

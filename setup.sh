@@ -3,15 +3,14 @@
 # PhynAI Agent Setup Script
 # ============================================================================
 # Quick setup for developers who cloned the repo manually.
-# Uses uv for fast Python provisioning and package management.
 #
 # Usage:
 #   ./setup.sh
 #
 # This script:
-# 1. Installs uv if not present
-# 2. Creates a virtual environment with Python 3.11 via uv
-# 3. Installs all dependencies (main package + dev)
+# 1. Finds Python 3.11+
+# 2. Creates a virtual environment
+# 3. Installs all dependencies via pip
 # 4. Creates .env from template (if not exists)
 # 5. Symlinks the 'phynai' CLI command into ~/.local/bin
 # 6. Checks for optional tools (ripgrep, adb)
@@ -29,68 +28,38 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-PYTHON_VERSION="3.11"
-
 echo ""
 echo -e "${CYAN}⚡ PhynAI Agent Setup${NC}"
 echo ""
 
 # ============================================================================
-# Install / locate uv
+# Python check
 # ============================================================================
 
-echo -e "${CYAN}→${NC} Checking for uv..."
+echo -e "${CYAN}→${NC} Checking Python 3.11+..."
 
-UV_CMD=""
-if command -v uv &> /dev/null; then
-    UV_CMD="uv"
-elif [ -x "$HOME/.local/bin/uv" ]; then
-    UV_CMD="$HOME/.local/bin/uv"
-elif [ -x "$HOME/.cargo/bin/uv" ]; then
-    UV_CMD="$HOME/.cargo/bin/uv"
-fi
-
-if [ -n "$UV_CMD" ]; then
-    UV_VERSION=$($UV_CMD --version 2>/dev/null)
-    echo -e "${GREEN}✓${NC} uv found ($UV_VERSION)"
-else
-    echo -e "${CYAN}→${NC} Installing uv..."
-    if curl -LsSf https://astral.sh/uv/install.sh | sh 2>/dev/null; then
-        if [ -x "$HOME/.local/bin/uv" ]; then
-            UV_CMD="$HOME/.local/bin/uv"
-        elif [ -x "$HOME/.cargo/bin/uv" ]; then
-            UV_CMD="$HOME/.cargo/bin/uv"
+PYTHON_CMD=""
+for cmd in python3.11 python3.12 python3.13 python3; do
+    if command -v "$cmd" &> /dev/null; then
+        PY_MAJOR=$("$cmd" -c "import sys; print(sys.version_info.major)" 2>/dev/null)
+        PY_MINOR=$("$cmd" -c "import sys; print(sys.version_info.minor)" 2>/dev/null)
+        if [ "$PY_MAJOR" = "3" ] && [ "$PY_MINOR" -ge "11" ]; then
+            PYTHON_CMD="$cmd"
+            break
         fi
-        
-        if [ -n "$UV_CMD" ]; then
-            UV_VERSION=$($UV_CMD --version 2>/dev/null)
-            echo -e "${GREEN}✓${NC} uv installed ($UV_VERSION)"
-        else
-            echo -e "${RED}✗${NC} uv installed but not found. Add ~/.local/bin to PATH and retry."
-            exit 1
-        fi
-    else
-        echo -e "${RED}✗${NC} Failed to install uv. Visit https://docs.astral.sh/uv/"
-        exit 1
     fi
-fi
+done
 
-# ============================================================================
-# Python check (uv can provision it automatically)
-# ============================================================================
-
-echo -e "${CYAN}→${NC} Checking Python $PYTHON_VERSION..."
-
-if $UV_CMD python find "$PYTHON_VERSION" &> /dev/null; then
-    PYTHON_PATH=$($UV_CMD python find "$PYTHON_VERSION")
-    PYTHON_FOUND_VERSION=$($PYTHON_PATH --version 2>/dev/null)
+if [ -n "$PYTHON_CMD" ]; then
+    PYTHON_FOUND_VERSION=$($PYTHON_CMD --version 2>/dev/null)
     echo -e "${GREEN}✓${NC} $PYTHON_FOUND_VERSION found"
 else
-    echo -e "${CYAN}→${NC} Python $PYTHON_VERSION not found, installing via uv..."
-    $UV_CMD python install "$PYTHON_VERSION"
-    PYTHON_PATH=$($UV_CMD python find "$PYTHON_VERSION")
-    PYTHON_FOUND_VERSION=$($PYTHON_PATH --version 2>/dev/null)
-    echo -e "${GREEN}✓${NC} $PYTHON_FOUND_VERSION installed"
+    echo -e "${RED}✗${NC} Python 3.11+ not found."
+    echo "  Install Python 3.11 or later:"
+    echo "    sudo apt install python3.11 python3.11-venv   # Debian/Ubuntu"
+    echo "    brew install python@3.11                      # macOS"
+    echo "    sudo apk add python3                          # Alpine"
+    exit 1
 fi
 
 # ============================================================================
@@ -104,11 +73,10 @@ if [ -d ".venv" ]; then
     rm -rf .venv
 fi
 
-$UV_CMD venv .venv --python "$PYTHON_VERSION"
-echo -e "${GREEN}✓${NC} .venv created (Python $PYTHON_VERSION)"
+$PYTHON_CMD -m venv .venv
+echo -e "${GREEN}✓${NC} .venv created ($PYTHON_FOUND_VERSION)"
 
-# Tell uv to install into this venv (no activation needed for uv)
-export VIRTUAL_ENV="$SCRIPT_DIR/.venv"
+source .venv/bin/activate
 
 # ============================================================================
 # Dependencies
@@ -116,20 +84,10 @@ export VIRTUAL_ENV="$SCRIPT_DIR/.venv"
 
 echo -e "${CYAN}→${NC} Installing dependencies..."
 
-# Prefer uv sync with lockfile (hash-verified installs) when available,
-# fall back to pip install for compatibility or when lockfile is stale.
-if [ -f "uv.lock" ]; then
-    echo -e "${CYAN}→${NC} Using uv.lock for hash-verified installation..."
-    UV_PROJECT_ENVIRONMENT="$SCRIPT_DIR/.venv" $UV_CMD sync --locked 2>/dev/null && \
-        echo -e "${GREEN}✓${NC} Core dependencies installed (lockfile verified)" || {
-        echo -e "${YELLOW}⚠${NC} Lockfile install failed (may be outdated), falling back..."
-        $UV_CMD sync
-        echo -e "${GREEN}✓${NC} Core dependencies installed"
-    }
-else
-    $UV_CMD sync
-    echo -e "${GREEN}✓${NC} Core dependencies installed"
-fi
+pip install --upgrade pip -q
+pip install -e . -q
+pip install pytest pytest-asyncio ruff -q
+echo -e "${GREEN}✓${NC} Dependencies installed"
 
 echo -e "${CYAN}→${NC} Optional integrations (install separately if needed):"
 echo -e "    Slack:   ${YELLOW}pip install 'phynai-agent[slack]'${NC}"
@@ -153,8 +111,7 @@ else
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         INSTALLED=false
-        
-        # Check if sudo is available
+
         if command -v sudo &> /dev/null && sudo -n true 2>/dev/null; then
             if command -v apt &> /dev/null; then
                 sudo apt install -y ripgrep && INSTALLED=true
@@ -162,18 +119,16 @@ else
                 sudo dnf install -y ripgrep && INSTALLED=true
             fi
         fi
-        
-        # Try brew (no sudo needed)
+
         if [ "$INSTALLED" = false ] && command -v brew &> /dev/null; then
             brew install ripgrep && INSTALLED=true
         fi
-        
-        # Try cargo (no sudo needed)
+
         if [ "$INSTALLED" = false ] && command -v cargo &> /dev/null; then
             echo -e "${CYAN}→${NC} Trying cargo install (no sudo required)..."
             cargo install ripgrep && INSTALLED=true
         fi
-        
+
         if [ "$INSTALLED" = true ]; then
             echo -e "${GREEN}✓${NC} ripgrep installed"
         else
@@ -218,7 +173,6 @@ if [ ! -f ".env" ]; then
     fi
 else
     echo -e "${GREEN}✓${NC} .env exists"
-    # Enforce restrictive permissions on .env (contains API keys/secrets)
     ENV_PERMS=$(stat -c "%a" .env 2>/dev/null || stat -f "%Lp" .env 2>/dev/null)
     if [ "$ENV_PERMS" != "600" ]; then
         chmod 600 .env
@@ -226,7 +180,6 @@ else
     fi
 fi
 
-# Secure ~/.phynai directory and .env if present
 if [ -f "$HOME/.phynai/.env" ]; then
     chmod 600 "$HOME/.phynai/.env" 2>/dev/null
 fi
@@ -243,7 +196,6 @@ mkdir -p "$HOME/.local/bin"
 ln -sf "$PHYNAI_BIN" "$HOME/.local/bin/phynai"
 echo -e "${GREEN}✓${NC} Symlinked phynai → ~/.local/bin/phynai"
 
-# Determine the appropriate shell config file
 SHELL_CONFIG=""
 if [[ "$SHELL" == *"zsh"* ]]; then
     SHELL_CONFIG="$HOME/.zshrc"
@@ -262,7 +214,7 @@ fi
 
 if [ -n "$SHELL_CONFIG" ]; then
     touch "$SHELL_CONFIG" 2>/dev/null || true
-    
+
     if ! echo "$PATH" | tr ':' '\n' | grep -q "^$HOME/.local/bin$"; then
         if ! grep -q '\.local/bin' "$SHELL_CONFIG" 2>/dev/null; then
             echo "" >> "$SHELL_CONFIG"

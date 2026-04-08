@@ -57,7 +57,7 @@ def _load_policy() -> dict[str, Any] | None:
         logger.error(
             "policy.yaml found at %s but PyYAML is not installed. "
             "Refusing to start without policy enforcement. "
-            "Install PyYAML: uv pip install pyyaml", policy_path,
+            "Install PyYAML: pip install pyyaml", policy_path,
         )
         raise SystemExit(
             "FATAL: policy.yaml exists but PyYAML is missing — "

@@ -87,11 +87,11 @@ show_status() {
 case "$CMD" in
   gateway)
     stop_process gateway
-    start_process gateway uv run phynai gateway start
+    start_process gateway "$REPO_DIR/.venv/bin/phynai" gateway start
     ;;
   paperclip)
     stop_process paperclip
-    start_process paperclip uv run phynai paperclip start
+    start_process paperclip "$REPO_DIR/.venv/bin/phynai" paperclip start
     ;;
   status)
     show_status

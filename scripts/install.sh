@@ -43,19 +43,27 @@ detect_os() {
   log "Detected OS: ${BOLD}${OS}${NC}"
 }
 
-# ── Install uv ──────────────────────────────────────────────────────
-install_uv() {
-  if command -v uv &>/dev/null; then
-    ok "uv already installed ($(uv --version))"
-    return
-  fi
-  log "Installing uv package manager..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="$HOME/.local/bin:$PATH"
-  if command -v uv &>/dev/null; then
-    ok "uv installed ($(uv --version))"
+# ── Find Python 3.11+ ───────────────────────────────────────────────
+find_python() {
+  PYTHON_CMD=""
+  for cmd in python3.11 python3.12 python3.13 python3; do
+    if command -v "$cmd" &>/dev/null; then
+      PY_MAJOR=$("$cmd" -c "import sys; print(sys.version_info.major)" 2>/dev/null)
+      PY_MINOR=$("$cmd" -c "import sys; print(sys.version_info.minor)" 2>/dev/null)
+      if [ "$PY_MAJOR" = "3" ] && [ "$PY_MINOR" -ge "11" ]; then
+        PYTHON_CMD="$cmd"
+        break
+      fi
+    fi
+  done
+
+  if [ -n "$PYTHON_CMD" ]; then
+    ok "Python found: $($PYTHON_CMD --version)"
   else
-    err "Failed to install uv. Install manually: https://docs.astral.sh/uv/"
+    err "Python 3.11+ not found. Install it first:
+    sudo apt install python3.11 python3.11-venv   # Debian/Ubuntu
+    brew install python@3.11                      # macOS
+    sudo apk add python3                          # Alpine"
   fi
 }
 
@@ -98,12 +106,13 @@ setup_python() {
     warn "Skipping venv creation (--no-venv)"
     return
   fi
-  log "Creating Python 3.11 virtual environment..."
-  uv venv --python 3.11 .venv
+  log "Creating virtual environment..."
+  $PYTHON_CMD -m venv .venv
   ok "Virtual environment created"
 
-  log "Installing dependencies with uv sync..."
-  uv sync
+  log "Installing dependencies..."
+  .venv/bin/pip install --upgrade pip -q
+  .venv/bin/pip install -e . -q
   ok "Dependencies installed"
 }
 
@@ -159,7 +168,7 @@ check_path() {
 
 # ── Run ──────────────────────────────────────────────────────────────
 detect_os
-install_uv
+find_python
 setup_dirs
 clone_repo
 setup_python
