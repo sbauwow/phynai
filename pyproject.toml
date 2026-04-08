@@ -10,10 +10,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-slack = ["slack-bolt>=1.18"]
-keyring = ["keyring>=25.0"]
 dev = ["pytest", "pytest-asyncio", "ruff"]
-# ms365 uses httpx only — no extra deps required
 
 [project.scripts]
 phynai = "phynai.cli_main:main"
